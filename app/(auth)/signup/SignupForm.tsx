@@ -19,31 +19,35 @@ export default function SignupForm() {
     setError(null)
     setLoading(true)
 
-    const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { firm_name: firmName },
-      },
-    })
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { firm_name: firmName },
+        },
+      })
 
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      // Email confirmation is enabled in Supabase — session is null until confirmed.
+      // session is set immediately only when "Confirm email" is disabled in the dashboard.
+      if (!data.session) {
+        setCheckEmail(true)
+        return
+      }
+
+      router.refresh()
+      router.push('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    // Email confirmation is enabled in Supabase — session is null until confirmed.
-    // session is set immediately only when "Confirm email" is disabled in the dashboard.
-    if (!data.session) {
-      setLoading(false)
-      setCheckEmail(true)
-      return
-    }
-
-    router.refresh()
-    router.push('/dashboard')
   }
 
   if (checkEmail) {

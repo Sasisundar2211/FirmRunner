@@ -19,22 +19,27 @@ export default function LoginForm() {
     setNeedsConfirmation(false)
     setLoading(true)
 
-    const supabase = getSupabaseBrowserClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const supabase = getSupabaseBrowserClient()
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      // Supabase returns this message when the user hasn't confirmed their email
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        setNeedsConfirmation(true)
-      } else {
-        setError(error.message)
+      if (error) {
+        // Supabase returns this message when the user hasn't confirmed their email
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          setNeedsConfirmation(true)
+        } else {
+          setError(error.message)
+        }
+        return
       }
-      setLoading(false)
-      return
-    }
 
-    router.refresh()
-    router.push('/dashboard')
+      router.refresh()
+      router.push('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
