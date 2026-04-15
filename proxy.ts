@@ -53,7 +53,10 @@ export async function proxy(request: NextRequest) {
   // /api/agents         — n8n scheduled triggers (verified by Bearer AGENT_SECRET)
   // /api/client-response— public "Acknowledge" links sent to clients
   // ─────────────────────────────────────────────────────────────────────────
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
+  const isAuthRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password')
 
   const isPublicRoute =
     isAuthRoute ||

@@ -1,42 +1,50 @@
 'use client'
 
 import { useState } from 'react'
-import { Metadata } from 'next'
 import Link from 'next/link'
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser'
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
+    console.log('handleSubmit fired', email)
+
+    setErrorMessage(null)
+    setIsLoading(true)
+
     try {
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
+        // Route through the server-side callback so the PKCE verifier
+        // (stored in cookies by @supabase/ssr) can be read server-side.
+        redirectTo: `${APP_URL}/auth/callback?next=/auth/reset-password`,
       })
+
       if (error) {
-        setError(error.message)
+        setErrorMessage(error.message)
         return
       }
-      setSent(true)
+
+      setSuccessMessage('Check your email for a password reset link. It expires in 1 hour.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred.')
+      setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred.')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  if (sent) {
+  if (successMessage) {
     return (
       <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-800">
-          <p className="font-medium">Check your email for a password reset link. It expires in 1 hour.</p>
+          <p className="font-medium">{successMessage}</p>
         </div>
         <p className="mt-6 text-center text-sm text-gray-500">
           <Link href="/login" className="text-brand-600 hover:text-brand-500 font-medium">
@@ -72,16 +80,16 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
+        {errorMessage && (
+          <p className="text-sm text-red-600">{errorMessage}</p>
         )}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading}
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50"
         >
-          {loading ? 'Sending...' : 'Send reset link'}
+          {isLoading ? 'Sending...' : 'Send reset link'}
         </button>
       </form>
 

@@ -12,56 +12,61 @@ export default function ResetPasswordPage() {
   const [pageState, setPageState] = useState<PageState>('loading')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    // Check if the callback route signalled a bad/expired link
     const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-
-    if (!code) {
+    if (params.get('error') === 'invalid_link') {
       setPageState('invalid')
       return
     }
 
+    // The callback route has already exchanged the PKCE code and written the
+    // session to cookies.  All we need to do is confirm a session is present.
     const supabase = getSupabaseBrowserClient()
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        console.error('[reset-password] code exchange failed:', error.message)
-        setPageState('invalid')
-      } else {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setPageState('ready')
+      } else {
+        console.warn('[reset-password] no session found after callback')
+        setPageState('invalid')
       }
     })
   }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
+    setErrorMessage(null)
 
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setErrorMessage('Password must be at least 8 characters.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.')
+      setErrorMessage('Passwords do not match.')
       return
     }
 
-    setLoading(true)
+    setIsLoading(true)
     try {
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.updateUser({ password: newPassword })
+
       if (error) {
-        setError(error.message)
+        setErrorMessage(error.message)
         return
       }
+
+      // Sign out so the user starts a clean session after updating their password
+      await supabase.auth.signOut()
       setPageState('success')
       setTimeout(() => router.push('/login'), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred.')
+      setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred.')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -136,16 +141,16 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
+        {errorMessage && (
+          <p className="text-sm text-red-600">{errorMessage}</p>
         )}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isLoading}
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50"
         >
-          {loading ? 'Updating...' : 'Update password'}
+          {isLoading ? 'Updating...' : 'Update password'}
         </button>
       </form>
     </div>

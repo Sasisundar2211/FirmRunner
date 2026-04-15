@@ -64,6 +64,10 @@ export async function GET(request: NextRequest) {
 
   if (exchangeError) {
     console.error('[auth/callback] exchangeCodeForSession failed:', exchangeError.message)
+    // For the reset-password flow, send back to that page with an error rather than login
+    if (next === '/auth/reset-password') {
+      return NextResponse.redirect(`${origin}/auth/reset-password?error=invalid_link`)
+    }
     const params = new URLSearchParams({
       error: 'auth_error',
       error_code: exchangeError.message,
