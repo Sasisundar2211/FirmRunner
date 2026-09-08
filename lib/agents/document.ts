@@ -23,7 +23,7 @@ export async function runDocumentAgent(firmId: string): Promise<{ queued: number
     ? firmSettings.upload_form_url
     : null
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.firmrunner.app'
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.firmrunner.app').replace(/\/$/, '')
 
   // Find clients with pending/required documents not yet reminded recently
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
