@@ -80,6 +80,27 @@ export async function POST(request: NextRequest) {
       .update({ status: 'sent', reviewed_at: now, reviewed_by: firmUser.id })
       .eq('id', emailId)
 
+    // Sync corresponding agent_logs entry to 'sent'
+    let logQuery = supabase
+      .from('agent_logs')
+      .update({
+        status: 'sent',
+        approved_by: user.id,
+        approved_at: now,
+        sent_at: now,
+      })
+      .eq('firm_id', email.firm_id)
+      .eq('agent_type', email.agent_type as import('@/lib/supabase/types').AgentType)
+      .eq('status', 'pending')
+      .eq('subject', email.subject)
+
+    if (email.client_id) {
+      logQuery = logQuery.eq('client_id', email.client_id)
+    } else {
+      logQuery = logQuery.is('client_id', null)
+    }
+    await logQuery
+
     return NextResponse.json({ success: true, action: 'sent' })
   }
 
@@ -88,6 +109,22 @@ export async function POST(request: NextRequest) {
     .from('queued_emails')
     .update({ status: 'rejected', reviewed_at: now, reviewed_by: firmUser.id })
     .eq('id', emailId)
+
+  // Sync corresponding agent_logs entry to 'skipped'
+  let rejectLogQuery = supabase
+    .from('agent_logs')
+    .update({ status: 'skipped' })
+    .eq('firm_id', email.firm_id)
+    .eq('agent_type', email.agent_type as import('@/lib/supabase/types').AgentType)
+    .eq('status', 'pending')
+    .eq('subject', email.subject)
+
+  if (email.client_id) {
+    rejectLogQuery = rejectLogQuery.eq('client_id', email.client_id)
+  } else {
+    rejectLogQuery = rejectLogQuery.is('client_id', null)
+  }
+  await rejectLogQuery
 
   return NextResponse.json({ success: true, action: 'rejected' })
 }
